@@ -7,17 +7,19 @@ app = FastAPI()
 
 @app.get("/auth")
 async def auth():
-    # Sandbox（test.salesforce.com）へのデバイスログインを開始
-    # --instance-url を指定しているので、Sandboxでも確実に動作します
+    # stderr（エラー出力）もキャプチャするように変更
     result = subprocess.run(
         ["sf", "org", "login", "device", "--instance-url", "https://test.salesforce.com", "--json"],
         capture_output=True, text=True
     )
-    # 後の処理で扱いやすいよう、文字列(stdout)を辞書形式にパースして返すとAIが読みやすくなります
+    
+    # stdout が空なら、stderr を返して原因を特定する
+    output_to_parse = result.stdout if result.stdout else result.stderr
+    
     try:
-        output_data = json.loads(result.stdout)
+        output_data = json.loads(output_to_parse)
     except:
-        output_data = result.stdout
+        output_data = output_to_parse
         
     return {"status": "auth_requested", "output": output_data}
 
