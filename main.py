@@ -20,27 +20,28 @@ async def auth():
     sf_path = get_sf_path()
     
     try:
-        # デバイスログイン開始
+        # 'org login device' の代わりに 'login device' (または旧式の呼び出し) を試行
+        # 多くの環境で互換性がある形式に変更します
         result = subprocess.run(
-            [sf_path, "org", "login", "device", "--instance-url", "https://test.salesforce.com", "--json"],
+            [sf_path, "login", "device", "--instance-url", "https://test.salesforce.com", "--json"],
             capture_output=True, text=True, timeout=30
         )
         
-        stdout_content = result.stdout.strip()
-        stderr_content = result.stderr.strip()
+        # もし上記がダメならさらに旧式のコマンドを試すロジック
+        if "is not a sf command" in result.stderr:
+             result = subprocess.run(
+                [sf_path, "force:auth:device:login", "--instanceurl", "https://test.salesforce.com", "--json"],
+                capture_output=True, text=True, timeout=30
+            )
 
+        stdout_content = result.stdout.strip()
         if stdout_content:
             return {"status": "auth_requested", "output": json.loads(stdout_content)}
         else:
-            return {"status": "error", "message": "CLIからの出力が空です", "stderr": stderr_content}
+            return {"status": "error", "message": "出力が空です", "stderr": result.stderr}
 
     except Exception as e:
-        return {
-            "status": "critical_error",
-            "message": str(e),
-            "tried_path": sf_path,
-            "path_env": os.environ.get("PATH")
-        }
+        return {"status": "critical_error", "message": str(e)}
 
 @app.post("/deploy")
 async def deploy(
