@@ -7,13 +7,21 @@ import shutil
 app = FastAPI()
 
 # 道具(sf)の優先順位：1.システムのパス 2.直接ダウンロードした場所
+# main.py の get_sf_path を修正
 def get_sf_path():
-    system_sf = shutil.which("sf")
-    if system_sf:
-        return system_sf
-    # curl方式でインストールした際のデフォルトパス
-    local_sf = "/opt/render/project/src/sfdx/bin/sf"
-    return local_sf
+    # 上記ビルドコマンドで解凍される実行ファイルのフルパス
+    return "/opt/render/project/src/sfdx/bin/sfdx"
+
+@app.get("/auth")
+async def auth():
+    sf_path = get_sf_path()
+    try:
+        # 「全部入り」ならこのコマンドが確実に通ります
+        result = subprocess.run(
+            [sf_path, "force:auth:device:login", "--instanceurl", "https://test.salesforce.com", "--json"],
+            capture_output=True, text=True, timeout=60
+        )
+        # (以下、結果をパースする処理)
 
 @app.get("/auth")
 async def auth():
