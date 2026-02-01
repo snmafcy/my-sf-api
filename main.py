@@ -7,22 +7,27 @@ app = FastAPI()
 
 @app.get("/auth")
 async def auth():
-    # stderr（エラー出力）もキャプチャするように変更
-    result = subprocess.run(
-        ["sf", "org", "login", "device", "--instance-url", "https://test.salesforce.com", "--json"],
-        capture_output=True, text=True
-    )
-    
-    # stdout が空なら、stderr を返して原因を特定する
-    output_to_parse = result.stdout if result.stdout else result.stderr
+    # 道具(sf)の場所を明示的に探すか、エラーを捕まえる
+    import shutil
+    sf_path = shutil.whoami("sf") or "sf" # パスが通っていればその場所を、なければ "sf" を使う
     
     try:
-        output_data = json.loads(output_to_parse)
-    except:
-        output_data = output_to_parse
+        result = subprocess.run(
+            [sf_path, "org", "login", "device", "--instance-url", "https://test.salesforce.com", "--json"],
+            capture_output=True, text=True
+        )
         
-    return {"status": "auth_requested", "output": output_data}
-
+        # 実行結果がある場合はそれを返し、なければエラー出力を返す
+        output_to_parse = result.stdout if result.stdout else result.stderr
+        return {"status": "auth_requested", "output": json.loads(output_to_parse) if output_to_parse else "No output from CLI"}
+        
+    except FileNotFoundError:
+        return {
+            "status": "error",
+            "message": "Salesforce CLI (sf) がサーバーに見つかりません。Build Commandを確認してください。"
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 @app.post("/deploy")
 async def deploy(
     apex_code: str = Body(..., embed=True), 
