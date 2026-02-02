@@ -13,18 +13,17 @@ CLIENT_ID = "3MVG96vIeT8jJWjI9k1auQmihZbrZy6ljZ4Gcqa_PVMJ9Vl8aGSJIsCgHj5L4rf9MaV
 @app.get("/auth")
 async def auth():
     try:
-        # 【修正ポイント】--clientid をここに追加し、インデントを正確に下げました
+        # タイムアウトを 60 -> 120秒に延長し、フラグを --instance-url に修正
         result = subprocess.run(
             [
                 SFDX_PATH, "force:auth:device:login", 
-                "--instanceurl", "https://test.salesforce.com", 
+                "--instance-url", "https://test.salesforce.com", # 警告に合わせて修正
                 "--clientid", CLIENT_ID,
                 "--json"
             ],
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True, timeout=120  # ここを120に増やしました
         )
         
-        # ログ出力（RenderのLogsタブで確認用）
         print(f"STDOUT: {result.stdout}")
         print(f"STDERR: {result.stderr}")
 
@@ -33,6 +32,8 @@ async def auth():
         else:
             return {"status": "error", "stderr": result.stderr}
 
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": "Renderのサーバーが遅すぎて時間切れになりました。もう一度リロードしてみてください。"}
     except Exception as e:
         return {"status": "critical_error", "message": str(e)}
 
