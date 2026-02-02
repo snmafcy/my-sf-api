@@ -43,10 +43,16 @@ async def deploy(
         f.write('<?xml version="1.0" encoding="UTF-8"?><ApexClass xmlns="http://soap.sforce.com/2006/04/metadata"><apiVersion>60.0</apiVersion><status>Active</status></ApexClass>')
 
     try:
-        result = subprocess.run(
-            [SFDX_PATH, "force:source:deploy", "-p", "classes", "-u", sf_username, "--json"],
-            capture_output=True, text=True
-        )
+        # main.py の subprocess.run の部分を以下のように書き換えます
+result = subprocess.run(
+    [
+        SFDX_PATH, "force:auth:device:login", 
+        "--instanceurl", "https://test.salesforce.com", 
+        "--clientid", "3MVG96vIeT8jJWjI9k1auQmihZbrZy6ljZ4Gcqa_PVMJ9Vl8aGSJIsCgHj5L4rf9MaVhlMWyYJ66WPDsA5hFI", # ←ここを追加！
+        "--json"
+    ],
+    capture_output=True, text=True, timeout=60
+)
         return {"status": "finished", "output": json.loads(result.stdout)}
     except Exception as e:
         return {"status": "deploy_error", "message": str(e)}
